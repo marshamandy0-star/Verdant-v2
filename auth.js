@@ -2,6 +2,7 @@
  * auth.js — Verdant Auth Guard
  * ==============================
  */
+const API_BASE_URL = 'https://verdant-production-20c6.up.railway.app';
 
 (async function authGuard() {
     const token = localStorage.getItem('verdant_token');

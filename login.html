@@ -201,6 +201,8 @@ let authTimerInterval = null;
 let authTimeLeft = 30;
 let currentSessionId = null; // stores sessionId from /api/signin
 
+const API_BASE_URL = 'https://verdant-production-20c6.up.railway.app';
+
 function showLogin() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-login').classList.add('active');
@@ -221,10 +223,11 @@ async function handleLogin() {
   btn.disabled = true;
   errEl.classList.remove('show');
   try {
-    const res = await fetch('/api/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pwd })
+    // Prepend the API_BASE_URL to the fetch path
+    const res = await fetch(`${API_BASE_URL}/api/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pwd } )
     });
     const data = await res.json();
     if (!res.ok) {
