@@ -1,6 +1,7 @@
-const express = require('express' );
+const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const speakeasy = require('speakeasy'); // <--- 1. ADD THIS LINE
 require('dotenv').config();
 
 const app = express();
@@ -26,8 +27,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// ... (Keep the rest of your server.js code exactly as it is)
 
 // Serve all frontend HTML/CSS/JS files from the parent folder
 app.use(express.static(path.join(__dirname, '..')));
@@ -146,7 +145,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Backend is running' });
 });
 
-// Start server
+// --- START SERVER ---
+// 2. DEFINE THE PORT
+const PORT = process.env.PORT || 3000;
+
+// 3. START LISTENING ON THE PORT
 app.listen(PORT, () => {
-  console.log(`✅ Verdant Private Banking — Server running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
