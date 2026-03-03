@@ -8,11 +8,14 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+// Middleware
 const allowedOrigins = [
-  'http://localhost:3001',
-  'http://localhost:5500',
-  process.env.ALLOWED_ORIGIN
-].filter(Boolean);
+    'http://localhost:3001',
+    'http://localhost:5500',
+    'https://your-site-name.netlify.app', // <--- REPLACE THIS with your actual Netlify URL
+    process.env.ALLOWED_ORIGIN
+].filter(Boolean );
+
 
 app.use(cors({
   origin: function(origin, callback) {
