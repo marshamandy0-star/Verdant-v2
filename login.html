@@ -266,11 +266,13 @@ async function handleVerify() {
   btn.disabled = true;
   errEl.classList.remove('show');
   try {
-    const res = await fetch('/api/verify-totp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: currentSessionId, code })
-    });
+    
+   const res = await fetch(`${API_BASE_URL}/api/verify-totp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: currentSessionId, code })
+});
+
     const data = await res.json();
     if (!res.ok) {
       errEl.textContent = data.error || 'Invalid authentication code.';
