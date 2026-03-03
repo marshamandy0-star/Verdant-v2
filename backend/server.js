@@ -1,34 +1,33 @@
-const express = require('express');
+const express = require('express' );
 const cors = require('cors');
-const speakeasy = require('speakeasy');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Middleware
 // Middleware
 const allowedOrigins = [
     'http://localhost:3001',
     'http://localhost:5500',
-    'https://your-site-name.netlify.app', // <--- REPLACE THIS with your actual Netlify URL
+    'https://verdant-production-20c6.up.railway.app',
+    'https://your-site-name.netlify.app', // <--- REPLACE THIS with your Netlify URL
     process.env.ALLOWED_ORIGIN
 ].filter(Boolean );
 
-
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, same-origin)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    return callback(null, true); // Allow all for now — restrict after you have your domain
-  },
-  credentials: true
+    origin: function(origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
 }));
+
 app.use(express.json());
+
+// ... (Keep the rest of your server.js code exactly as it is)
 
 // Serve all frontend HTML/CSS/JS files from the parent folder
 app.use(express.static(path.join(__dirname, '..')));

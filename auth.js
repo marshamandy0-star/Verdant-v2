@@ -1,38 +1,40 @@
 /**
  * auth.js — Verdant Auth Guard
  * ==============================
- * Include this script at the TOP of every protected dashboard page.
- * It checks the token in localStorage against /api/verify-token.
- * If the token is missing or invalid, it redirects to login.html immediately.
- *
- * Usage: <script src="auth.js"></script>  (before any other scripts)
  */
 
 (async function authGuard() {
-  const token = localStorage.getItem('verdant_token');
+    const token = localStorage.getItem('verdant_token');
 
-  // No token at all — go straight to login
-  if (!token) {
-    window.location.replace('login.html');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/verify-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
-
-    if (!res.ok) {
-      // Token invalid or expired — clear it and redirect
-      localStorage.removeItem('verdant_token');
-      window.location.replace('login.html');
+    // 1. No token at all — go straight to login
+    if (!token) {
+        window.location.replace('login.html');
+        return;
     }
-    // Token valid — page continues loading normally
 
-  } catch (err) {
-    // Server unreachable — redirect to login for security
-    window.location.replace('login.html');
-  }
+    // 2. Define the Backend URL (Same as shared.js)
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3001'
+        : 'https://verdant-production-20c6.up.railway.app';
+
+    try {
+        // 3. Use the full API_URL to verify the token
+        const res = await fetch(`${API_URL}/api/verify-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token } )
+        });
+
+        if (!res.ok) {
+            // Token invalid or expired — clear it and redirect
+            localStorage.removeItem('verdant_token');
+            window.location.replace('login.html');
+        }
+        // Token valid — page continues loading normally
+
+    } catch (err) {
+        // Server unreachable — redirect to login for security
+        console.error('Auth check failed:', err);
+        window.location.replace('login.html');
+    }
 })();
