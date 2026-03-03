@@ -15,16 +15,18 @@ const allowedOrigins = [
     process.env.ALLOWED_ORIGIN
 ].filter(Boolean );
 
+// This enables CORS for all origins and handles preflight OPTIONS requests automatically.
+app.use(cors()); 
+
+// You can also add specific options if needed, but start with the simplest.
+// For example, to be more specific:
+/*
 app.use(cors({
-    origin: function(origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
-}));
+  origin: 'https://rococo-gelato-3dea70.netlify.app', // Allow your specific frontend
+  credentials: true
+} ));
+*/
+
 
 app.use(express.json());
 
