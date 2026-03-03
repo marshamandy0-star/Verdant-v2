@@ -11,7 +11,7 @@ const allowedOrigins = [
     'http://localhost:3001',
     'http://localhost:5500',
     'https://verdant-production-20c6.up.railway.app',
-    'https://your-site-name.netlify.app', // <--- REPLACE THIS with your Netlify URL
+    'https://rococo-gelato-3dea70.netlify.app', // <--- REPLACE THIS with your Netlify URL
     process.env.ALLOWED_ORIGIN
 ].filter(Boolean );
 
