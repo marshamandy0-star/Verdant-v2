@@ -2,7 +2,7 @@
  * auth.js — Verdant Auth Guard
  * ==============================
  */
-const API_BASE_URL = 'https://verdant-production-20c6.up.railway.app';
+const API_BASE_URL = 'verdant-v2-production.up.railway.app';
 
 (async function authGuard() {
     const token = localStorage.getItem('verdant_token');
@@ -16,7 +16,7 @@ const API_BASE_URL = 'https://verdant-production-20c6.up.railway.app';
     // 2. Define the Backend URL (Same as shared.js)
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:3001'
-        : 'https://verdant-production-20c6.up.railway.app';
+        : 'verdant-v2-production.up.railway.app';
 
     try {
         // 3. Use the full API_URL to verify the token
