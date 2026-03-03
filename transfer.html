@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verdant — Transfer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="auth.js"></script>
+<style>
+body { padding-top:64px; }
+.transfer-main { flex:1; padding:48px 56px; margin-left:280px; }
+@media(max-width:900px){ .transfer-main{ margin-left:0; padding:24px 20px; } }
+@media(max-width:600px){ .transfer-main{ padding:16px; } }
+
+/* Transfer grid responsive */
+.transfer-grid { display:grid; grid-template-columns:1fr 320px; gap:32px; }
+@media(max-width:1100px){ .transfer-grid{ grid-template-columns:1fr 280px; gap:24px; } }
+@media(max-width:900px){ .transfer-grid{ grid-template-columns:1fr; } }
+
+/* Processing overlay */
+.transfer-processing-overlay {
+  position:fixed; inset:0; background:rgba(20,22,18,.85); z-index:9000;
+  display:none; align-items:center; justify-content:center; flex-direction:column;
+}
+.transfer-processing-overlay.active { display:flex; }
+.transfer-processing-inner {
+  background:var(--cream); border-radius:8px; padding:48px 40px;
+  text-align:center; max-width:360px; width:90%;
+}
+.transfer-processing-spinner {
+  width:56px; height:56px; border:3px solid var(--border);
+  border-top-color:var(--gold2); border-radius:50%;
+  animation:spinTransfer 0.8s linear infinite;
+  margin:0 auto 24px;
+}
+@keyframes spinTransfer { to { transform:rotate(360deg); } }
+.transfer-processing-title {
+  font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400;
+  margin-bottom:8px; color:var(--text);
+}
+.transfer-processing-sub { font-size:13px; color:var(--muted); line-height:1.6; }
+.transfer-processing-steps { margin-top:20px; text-align:left; }
+.transfer-processing-step {
+  display:flex; align-items:center; gap:10px; font-size:12px;
+  color:var(--muted); margin-bottom:8px; transition:color .3s;
+}
+.transfer-processing-step.done { color:var(--green); }
+.transfer-processing-step .step-dot {
+  width:8px; height:8px; border-radius:50%; background:var(--border);
+  flex-shrink:0; transition:background .3s;
+}
+.transfer-processing-step.done .step-dot { background:var(--green); }
+.transfer-processing-step.active .step-dot { background:var(--gold2); }
+.transfer-processing-step.active { color:var(--text); }
+
+/* Fraud / security hold modal */
+.fraud-modal-icon {
+  width:72px; height:72px; background:#FFF3E0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
+}
+.fraud-case-box {
+  background:#FFF8F0; border:1px solid #FFD180; border-radius:6px;
+  padding:16px; margin-bottom:20px; text-align:left;
+}
+.fraud-case-number {
+  font-family:'DM Mono',monospace; font-size:13px; font-weight:600;
+  color:var(--text); letter-spacing:.04em;
+}
+.fraud-steps { text-align:left; margin-bottom:20px; }
+.fraud-step {
+  display:flex; gap:12px; align-items:flex-start; margin-bottom:12px;
+  font-size:13px; color:var(--text); line-height:1.5;
+}
+.fraud-step-num {
+  width:22px; height:22px; border-radius:50%; background:var(--gold2);
+  color:var(--text); font-size:11px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+}
+.fraud-hotline {
+  background:var(--ivory); border:1px solid var(--border); border-radius:4px;
+  padding:12px 16px; font-size:13px; display:flex; align-items:center; gap:10px;
+  margin-bottom:20px;
+}
+.fraud-hotline strong { font-family:'DM Mono',monospace; font-size:15px; }
+
+/* Success modal responsive */
+.modal-content { max-width:520px; width:94%; }
+@media(max-width:600px){
+  .modal-content { padding:24px 18px; }
+  .modal-content .btn-submit, .modal-content .btn-cancel { font-size:13px; padding:12px 10px; }
+}
+
+/* Account balance chips */
+.account-balance-chip {
+  display:inline-block; font-family:'DM Mono',monospace; font-size:11px;
+  background:var(--ivory); border:1px solid var(--border); border-radius:3px;
+  padding:2px 8px; margin-left:6px; color:var(--muted);
+}
+</style>
+</head>
+<body>
+
+<!-- PAGE LOAD OVERLAY -->
+<div id="pageLoadOverlay">
+  <div class="page-loader">
+    <div class="page-loader-logo">Ver<em>dant</em></div>
+    <div class="page-loader-bar"><div class="page-loader-fill"></div></div>
+  </div>
+</div>
+
+<!-- TRANSFER PROCESSING OVERLAY -->
+<div class="transfer-processing-overlay" id="transferProcessingOverlay">
+  <div class="transfer-processing-inner">
+    <div class="transfer-processing-spinner"></div>
+    <div class="transfer-processing-title">Processing Transfer</div>
+    <div class="transfer-processing-sub">Please wait while we securely process your transfer request.</div>
+    <div class="transfer-processing-steps">
+      <div class="transfer-processing-step active" id="procStep1">
+        <div class="step-dot"></div>Verifying account credentials
+      </div>
+      <div class="transfer-processing-step" id="procStep2">
+        <div class="step-dot"></div>Running security checks
+      </div>
+      <div class="transfer-processing-step" id="procStep3">
+        <div class="step-dot"></div>Contacting receiving institution
+      </div>
+      <div class="transfer-processing-step" id="procStep4">
+        <div class="step-dot"></div>Finalizing transfer
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="topbar">
+  <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+  <a class="topbar-logo" href="index.html">Ver<em>dant</em></a>
+  <nav class="topbar-nav" id="topNav" style="display:none;"></nav>
+  <div class="topbar-right">
+    <span style="font-size:12px;color:rgba(247,244,238,.5);font-family:'DM Mono',monospace;letter-spacing:.06em;">James Christopher</span>
+    <button class="btn-ghost" onclick="signOut()">Sign Out</button>
+  </div>
+</div>
+
+<div class="dashboard-layout">
+  <div class="sidebar" id="mainSidebar"></div>
+
+  <div class="transfer-main">
+    <div class="dash-greeting">
+      <div class="dash-title">Transfer Funds</div>
+      <div class="dash-sub">Send money securely to any account.</div>
+    </div>
+
+    <div class="transfer-grid">
+      <div class="transfer-form-card">
+        <div class="form-title">New Transfer</div>
+
+        <div class="form-section">
+          <div class="form-section-title">From Account</div>
+          <div class="form-group">
+            <div class="form-label">Source Account</div>
+            <select class="form-select" id="fromAccount" onchange="updateTransferSummary()">
+              <option value="checking" data-balance="2847500">Primary Checking (•••• 3847) — $2,847,500.00</option>
+              <option value="savings" data-balance="5200000">High-Yield Savings (•••• 2847) — $5,200,000.00</option>
+              <option value="investment" data-balance="12480000">Investment Account (•••• 5920) — $12,480,000.00</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">To Account</div>
+          <div class="form-group">
+            <div class="form-label">Recipient Name</div>
+            <input type="text" class="form-input" id="recipientName" placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Bank Name</div>
+            <input type="text" class="form-input" id="bankName" placeholder="Recipient bank name">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Routing Number</div>
+            <input type="text" class="form-input" id="routingNumber" placeholder="Routing number (9 digits)" maxlength="9" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Account Number</div>
+            <input type="text" class="form-input" id="accountNumber" placeholder="Account number" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Transfer Details</div>
+          <div class="form-group">
+            <div class="form-label">Amount</div>
+            <input type="text" class="form-input" id="transferAmount" placeholder="0.00" oninput="formatAmountInput(this); updateTransferSummary()" onkeypress="return /[0-9.,]/i.test(event.key)">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Transfer Type</div>
+            <select class="form-select" id="transferType" onchange="updateTransferSummary()">
+              <option value="ach">ACH Transfer (2 Business Days — Free)</option>
+              <option value="wire">Wire Transfer (Same Day — $25 Fee)</option>
+              <option value="internal">Instant Transfer (Free)</option>
+            </select>
+            <div id="transferTypeNotice" style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5;display:none;"></div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Memo (Optional)</div>
+            <input type="text" class="form-input" id="transferMemo" placeholder="Transfer memo (optional)">
+          </div>
+        </div>
+
+        <div style="background:var(--ivory);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:24px;" id="transferSummaryBox">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Transfer Summary</div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+            <span>Amount</span><span id="summaryTransferAmount" style="font-family:'DM Mono',monospace;font-weight:600;">$0.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+            <span>Fee</span><span id="summaryFee" style="font-family:'DM Mono',monospace;">$0.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;padding-top:8px;border-top:1px solid var(--border);">
+            <span>Total Deducted</span><span id="summaryTotal" style="font-family:'DM Mono',monospace;">$0.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;color:var(--muted);">
+            <span>Processing Time</span><span id="summaryTime">2 Business Days</span>
+          </div>
+        </div>
+
+        <div class="transfer-actions">
+          <button class="btn-submit" id="sendTransferBtn" onclick="processTransfer()">Send Transfer</button>
+          <button class="btn-cancel" onclick="navigateTo('dashboard.html')">Cancel</button>
+        </div>
+      </div>
+
+      <div class="transfer-recent">
+        <div class="panel-title" style="margin-bottom:20px;">Recent Recipients</div>
+        <div id="recentRecipients"></div>
+        <div class="panel-title" style="margin-bottom:16px;margin-top:28px;">Transfer Limits</div>
+        <div style="background:var(--cream);border:1px solid var(--border);border-radius:4px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+            <span>Daily ACH Limit</span><span style="font-family:'DM Mono',monospace;font-weight:600;">$500,000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+            <span>Daily Wire Limit</span><span style="font-family:'DM Mono',monospace;font-weight:600;">$5,000,000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span>Monthly Limit</span><span style="font-family:'DM Mono',monospace;font-weight:600;">$20,000,000</span>
+          </div>
+        </div>
+        <div style="margin-top:20px;background:#FFF8F0;border:1px solid #FFD180;border-radius:4px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#E65100;margin-bottom:6px;">Instant Transfer Only</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">For your security, ACH and Wire transfers require additional verification. Only Instant Transfers are processed immediately.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TRANSFER SUCCESS MODAL (Instant Transfer only)
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="transferSuccessModal">
+  <div class="modal-content" style="text-align:center;position:relative;">
+    <div style="width:72px;height:72px;background:#E5F5E5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="dash-title" style="margin-bottom:8px;color:var(--green);">Transfer Initiated</div>
+    <div class="dash-sub" style="margin-bottom:20px;" id="transferSuccessSubtitle">Your instant transfer has been successfully submitted.</div>
+
+    <!-- 2-business-day notice -->
+    <div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:6px;padding:16px;margin-bottom:20px;text-align:left;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div style="font-size:13px;font-weight:700;color:#2E7D32;letter-spacing:.02em;">Funds Available in 2 Business Days</div>
+      </div>
+      <div style="font-size:13px;color:#388E3C;line-height:1.6;">Funds will be available in the recipient's account within <strong>2 business days</strong> from today. Business days are Monday–Friday, excluding federal holidays.</div>
+    </div>
+
+    <!-- Transfer details summary -->
+    <div id="transferSummaryDetails" style="background:var(--ivory);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:20px;text-align:left;"></div>
+
+    <!-- Pending notice -->
+    <div style="background:var(--cream);border:1px solid var(--border);border-radius:4px;padding:12px 16px;margin-bottom:20px;text-align:left;display:flex;align-items:flex-start;gap:10px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;">Your payment will be fully completed within <strong style="color:var(--text);">2 business days</strong>. Business days are Monday–Friday, excluding federal holidays.</div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn-submit" style="flex:1;min-width:120px;" onclick="closeModal('transferSuccessModal'); navigateTo('transactions.html')">View Transactions</button>
+      <button class="btn-cancel" style="flex:1;min-width:120px;" onclick="closeModal('transferSuccessModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FRAUD / SECURITY HOLD MODAL (ACH & Wire)
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="transferFraudModal">
+  <div class="modal-content" style="position:relative;text-align:center;">
+    <div class="fraud-modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <div class="dash-title" style="margin-bottom:8px;color:#E65100;">Transfer Held for Review</div>
+    <div class="dash-sub" style="margin-bottom:20px;">This transfer has been flagged by our fraud prevention system and placed on a temporary security hold.</div>
+
+    <div class="fraud-case-box">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Security Hold Reference</div>
+      <div class="fraud-case-number" id="fraudCaseNumber">VRD-SEC-00000000</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Please reference this number when contacting support.</div>
+    </div>
+
+    <div style="text-align:left;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Why was my transfer held?</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.7;background:var(--ivory);border-radius:4px;padding:14px;border:1px solid var(--border);">
+        Our automated security system flagged this <span id="fraudTransferType">ACH</span> transfer as potentially suspicious based on one or more of the following factors:
+        <ul style="margin:10px 0 0 16px;padding:0;font-size:13px;color:var(--muted);line-height:1.8;">
+          <li>Transfer amount exceeds your typical activity pattern</li>
+          <li>First-time transfer to this recipient</li>
+          <li>Routing number associated with high-risk activity</li>
+          <li>Transfer initiated outside normal business hours</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="fraud-steps">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">What to do next</div>
+      <div class="fraud-step">
+        <div class="fraud-step-num">1</div>
+        <div>Call our 24/7 Fraud Prevention Hotline to verify your identity and authorize the transfer.</div>
+      </div>
+      <div class="fraud-step">
+        <div class="fraud-step-num">2</div>
+        <div>Have your account number, government-issued ID, and the security hold reference number ready.</div>
+      </div>
+      <div class="fraud-step">
+        <div class="fraud-step-num">3</div>
+        <div>Once verified, your transfer will be released within 1 business day.</div>
+      </div>
+    </div>
+
+    <div class="fraud-hotline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Fraud Prevention Hotline (24/7)</div>
+        <strong>1-800-VERDANT (1-800-837-3268)</strong>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.6;">
+      If you did not initiate this transfer, do not call. Instead, log in from a secure device and change your password immediately.
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn-submit" style="flex:1;min-width:120px;background:#E65100;border-color:#E65100;" onclick="closeModal('transferFraudModal')">I Understand</button>
+      <button class="btn-cancel" style="flex:1;min-width:120px;" onclick="closeModal('transferFraudModal')">Cancel Transfer</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-content" style="position:relative;">
+    <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+    <div class="dash-title" style="margin-bottom:24px;">Edit Profile</div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="profileAvatarPreview" style="width:120px;height:120px;background:var(--gold);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:var(--text);cursor:pointer;overflow:hidden;" onclick="document.getElementById('profilePicInput').click();">JC</div>
+      <input type="file" id="profilePicInput" style="display:none;" accept="image/*" onchange="handleProfilePicUpload(event)">
+      <div style="font-size:12px;color:var(--muted);">Click avatar to upload photo</div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Email</div>
+      <input type="email" class="form-input" id="profileEmail" value="JamesChris98@yahoo.com">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Phone</div>
+      <input type="tel" class="form-input" id="profilePhone" value="+1 (555) 123-4567">
+    </div>
+    <button class="btn-submit" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="sidebar.js"></script>
+<script>
+window.ACTIVE_PAGE = 'transfer';
+
+// ── Account balances (live, deducted on transfer) ──
+const accountBalances = {
+  checking: parseFloat(localStorage.getItem('bal_checking') || '2847500'),
+  savings:  parseFloat(localStorage.getItem('bal_savings')  || '5200000'),
+  investment: parseFloat(localStorage.getItem('bal_investment') || '12480000')
+};
+
+const accountLabels = {
+  checking:   'Primary Checking (•••• 3847)',
+  savings:    'High-Yield Savings (•••• 2847)',
+  investment: 'Investment Account (•••• 5920)'
+};
+
+const recentRecipientsData = [
+  { name:'John Smith',     bank:'Chase Bank',        account:'•••• 4821', initials:'JS', color:'#4A6741' },
+  { name:'Sarah Johnson',  bank:'Bank of America',   account:'•••• 7293', initials:'SJ', color:'#B8963E' },
+  { name:'Michael Chen',   bank:'Wells Fargo',       account:'•••• 5501', initials:'MC', color:'#2C3E50' },
+  { name:'Emily Davis',    bank:'Citibank',          account:'•••• 3388', initials:'ED', color:'#8E44AD' },
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSidebar('transfer');
+  renderRecentRecipients();
+  updateTransferSummary();
+  refreshAccountDropdown();
+});
+
+function refreshAccountDropdown() {
+  const sel = document.getElementById('fromAccount');
+  if (!sel) return;
+  const options = sel.querySelectorAll('option');
+  options.forEach(opt => {
+    const key = opt.value;
+    const bal = accountBalances[key];
+    const label = accountLabels[key];
+    opt.textContent = `${label} — $${bal.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+  });
+}
+
+function renderRecentRecipients() {
+  const container = document.getElementById('recentRecipients');
+  if (!container) return;
+  container.innerHTML = recentRecipientsData.map(r => `
+    <div class="recipient-item" onclick="fillRecipient('${r.name}','${r.bank}')">
+      <div class="recipient-avatar" style="background:${r.color};">${r.initials}</div>
+      <div>
+        <div class="recipient-name">${r.name}</div>
+        <div class="recipient-bank">${r.bank} · ${r.account}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function fillRecipient(name, bank) {
+  document.getElementById('recipientName').value = name;
+  document.getElementById('bankName').value = bank;
+}
+
+function updateTransferSummary() {
+  const amt = parseFloat((document.getElementById('transferAmount')?.value || '0').replace(/,/g,'')) || 0;
+  const type = document.getElementById('transferType')?.value || 'ach';
+  const fee = type === 'wire' ? 25 : 0;
+  const total = amt + fee;
+  const time = type === 'wire' ? 'Same Day' : type === 'internal' ? 'Instant' : '2 Business Days';
+
+  document.getElementById('summaryTransferAmount').textContent = '$' + amt.toLocaleString('en-US', {minimumFractionDigits:2});
+  document.getElementById('summaryFee').textContent = '$' + fee.toFixed(2);
+  document.getElementById('summaryTotal').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits:2});
+  document.getElementById('summaryTime').textContent = time;
+
+  // Show type notice
+  const noticeEl = document.getElementById('transferTypeNotice');
+  if (type === 'ach') {
+    noticeEl.textContent = 'ACH transfers require additional security verification and may be held for review.';
+    noticeEl.style.display = 'block';
+    noticeEl.style.color = '#E65100';
+  } else if (type === 'wire') {
+    noticeEl.textContent = 'Wire transfers require additional security verification and may be held for review.';
+    noticeEl.style.display = 'block';
+    noticeEl.style.color = '#E65100';
+  } else {
+    noticeEl.style.display = 'none';
+  }
+}
+
+function processTransfer() {
+  const name    = document.getElementById('recipientName').value.trim();
+  const routing = document.getElementById('routingNumber').value.trim();
+  const account = document.getElementById('accountNumber').value.trim();
+  const amount  = document.getElementById('transferAmount').value.trim();
+  const type    = document.getElementById('transferType').value;
+  const memo    = document.getElementById('transferMemo').value.trim();
+  const fromKey = document.getElementById('fromAccount').value;
+
+  if (!name)                                 { showToast('Please enter recipient name'); return; }
+  if (!routing || routing.length !== 9)      { showToast('Please enter a valid 9-digit routing number'); return; }
+  if (!account)                              { showToast('Please enter account number'); return; }
+  if (!amount || parseFloat(amount.replace(/,/g,'')) <= 0) { showToast('Please enter a valid amount'); return; }
+
+  const amtNum = parseFloat(amount.replace(/,/g,''));
+  const fee    = type === 'wire' ? 25 : 0;
+  const total  = amtNum + fee;
+
+  // Check sufficient balance
+  if (total > accountBalances[fromKey]) {
+    showToast('Insufficient funds in selected account');
+    return;
+  }
+
+  // Disable button to prevent double-submit
+  const btn = document.getElementById('sendTransferBtn');
+  btn.disabled = true;
+
+  // Show processing overlay
+  showProcessingOverlay(() => {
+    // After processing animation — branch on transfer type
+    if (type === 'ach' || type === 'wire') {
+      showFraudModal(type, name, amtNum, fee);
+    } else {
+      // Instant transfer — deduct balance and show success
+      deductBalance(fromKey, total);
+      addPendingTransaction(name, amtNum, fromKey, memo);
+      showInstantSuccessModal(name, amtNum, fee, total, memo, fromKey);
+    }
+    btn.disabled = false;
+  });
+}
+
+// ── Processing overlay animation ──
+function showProcessingOverlay(callback) {
+  const overlay = document.getElementById('transferProcessingOverlay');
+  overlay.classList.add('active');
+
+  const steps = ['procStep1','procStep2','procStep3','procStep4'];
+  let current = 0;
+
+  // Animate steps
+  const stepInterval = setInterval(() => {
+    if (current > 0) {
+      document.getElementById(steps[current-1]).classList.remove('active');
+      document.getElementById(steps[current-1]).classList.add('done');
+    }
+    if (current < steps.length) {
+      document.getElementById(steps[current]).classList.add('active');
+      current++;
+    } else {
+      clearInterval(stepInterval);
+    }
+  }, 380);
+
+  // Total processing time ~1.8s
+  setTimeout(() => {
+    clearInterval(stepInterval);
+    steps.forEach(s => {
+      document.getElementById(s).classList.remove('active');
+      document.getElementById(s).classList.add('done');
+    });
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      // Reset steps for next time
+      steps.forEach(s => {
+        document.getElementById(s).classList.remove('active','done');
+      });
+      document.getElementById(steps[0]).classList.add('active');
+      callback();
+    }, 300);
+  }, 1800);
+}
+
+// ── Fraud modal for ACH/Wire ──
+function showFraudModal(type, name, amt, fee) {
+  const caseNum = 'VRD-SEC-' + Date.now().toString().slice(-8).toUpperCase();
+  document.getElementById('fraudCaseNumber').textContent = caseNum;
+  document.getElementById('fraudTransferType').textContent = type === 'wire' ? 'Wire' : 'ACH';
+  openModal('transferFraudModal');
+}
+
+// ── Instant transfer success ──
+function showInstantSuccessModal(name, amt, fee, total, memo, fromKey) {
+  const confirmNum = 'VRD' + Date.now().toString().slice(-8).toUpperCase();
+  const today = new Date();
+  const bizDays = addBusinessDays(today, 2);
+  const availDate = bizDays.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+
+  document.getElementById('transferSuccessSubtitle').textContent =
+    `Your instant transfer to ${name} has been successfully submitted.`;
+
+  document.getElementById('transferSummaryDetails').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Transfer Details</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Recipient</span><span style="font-weight:500;">${name}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>From</span><span style="font-size:12px;color:var(--muted);">${accountLabels[fromKey]}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Amount</span><span style="font-family:'DM Mono',monospace;font-weight:600;">$${amt.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    ${fee > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Fee</span><span style="font-family:'DM Mono',monospace;">$${fee.toFixed(2)}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--border);font-weight:600;margin-bottom:6px;"><span>Total Deducted</span><span style="font-family:'DM Mono',monospace;">$${total.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Available to Recipient</span><span style="font-size:12px;color:var(--green);font-weight:600;">${availDate}</span></div>
+    ${memo ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);">Memo: ${memo}</div>` : ''}
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">Confirmation #: <strong style="color:var(--text);">${confirmNum}</strong> &nbsp;·&nbsp; Save this for your records.</div>
+  `;
+
+  openModal('transferSuccessModal');
+
+  // Reset form
+  ['recipientName','bankName','routingNumber','accountNumber','transferAmount','transferMemo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  updateTransferSummary();
+  refreshAccountDropdown();
+}
+
+// ── Deduct balance from selected account ──
+function deductBalance(accountKey, amount) {
+  accountBalances[accountKey] = Math.max(0, accountBalances[accountKey] - amount);
+  localStorage.setItem('bal_' + accountKey, accountBalances[accountKey].toString());
+}
+
+// ── Add pending transaction to localStorage ──
+function addPendingTransaction(recipientName, amount, fromKey, memo) {
+  const pending = JSON.parse(localStorage.getItem('verdant_pending_transfers') || '[]');
+  const now = new Date();
+  const newTx = {
+    id: 'TX' + Date.now(),
+    name: 'Transfer to ' + recipientName,
+    date: now.toLocaleDateString('en-US', {month:'short', day:'2-digit', year:'numeric'}),
+    dateObj: now.toISOString(),
+    amount: '-$' + amount.toLocaleString('en-US', {minimumFractionDigits:2}),
+    cat: 'Transfer',
+    type: 'debit',
+    merchant: recipientName,
+    ref: 'TRF-' + Date.now().toString().slice(-8),
+    status: 'Pending',
+    details: memo || ('Instant transfer to ' + recipientName),
+    fromAccount: accountLabels[fromKey],
+    reviewDate: addBusinessDays(now, 2).toISOString()
+  };
+  pending.unshift(newTx);
+  localStorage.setItem('verdant_pending_transfers', JSON.stringify(pending));
+}
+
+// ── Helper: add N business days to a date ──
+function addBusinessDays(date, days) {
+  let result = new Date(date);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) added++; // skip weekends
+  }
+  return result;
+}
+</script>
+</body>
+</html>

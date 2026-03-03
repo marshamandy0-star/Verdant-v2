@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verdant — Savings Goals</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="auth.js"></script>
+<style>
+body { padding-top:64px; }
+.savings-main { flex:1; padding:48px 56px; margin-left:280px; }
+@media(max-width:900px){ .savings-main{ margin-left:0; padding:24px 20px; } }
+@media(max-width:600px){ .savings-main{ padding:16px; } }
+
+.goal-card {
+  background:var(--cream); border:1px solid var(--border); border-radius:8px;
+  padding:24px; margin-bottom:20px;
+  transition:box-shadow .2s;
+}
+.goal-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.08); }
+.goal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+.goal-name { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:400; }
+.goal-icon-wrap {
+  width:48px; height:48px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0;
+}
+.goal-amounts { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px; }
+.goal-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:12px; }
+.goal-bar-fill { height:100%; border-radius:4px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+.goal-meta { display:flex; gap:20px; font-size:12px; color:var(--muted); flex-wrap:wrap; }
+.goal-meta span { display:flex; align-items:center; gap:4px; }
+
+/* Responsive goal grid for larger screens */
+@media(min-width:1200px){
+  .goals-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .goals-grid .goal-card { margin-bottom:0; }
+}
+@media(max-width:600px){
+  .goal-card { padding:18px; }
+  .goal-name { font-size:17px; }
+  .goal-meta { gap:12px; }
+}
+</style>
+</head>
+<body>
+
+<div id="pageLoadOverlay">
+  <div class="page-loader">
+    <div class="page-loader-logo">Ver<em>dant</em></div>
+    <div class="page-loader-bar"><div class="page-loader-fill"></div></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+  <a class="topbar-logo" href="index.html">Ver<em>dant</em></a>
+  <nav class="topbar-nav" id="topNav" style="display:none;"></nav>
+  <div class="topbar-right">
+    <span style="font-size:12px;color:rgba(247,244,238,.5);font-family:'DM Mono',monospace;letter-spacing:.06em;">James Christopher</span>
+    <button class="btn-ghost" onclick="signOut()">Sign Out</button>
+  </div>
+</div>
+
+<div class="dashboard-layout">
+  <div class="sidebar" id="mainSidebar"></div>
+
+  <div class="savings-main">
+    <div class="dash-greeting">
+      <div class="dash-title">Savings Goals</div>
+      <div class="dash-sub">Track your progress toward your financial goals.</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+      <div style="font-size:14px;color:var(--muted);">4 active goals &nbsp;·&nbsp; Total saved: <strong style="color:var(--text);">$4,550,000</strong></div>
+      <button class="btn-submit" style="padding:10px 20px;" onclick="showToast('Please contact your Relationship Manager to open a new savings goal.')">+ New Goal</button>
+    </div>
+
+    <div class="goals-grid">
+
+      <!-- Goal 1: Vacation Home -->
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <div class="goal-name">Vacation Home — Hamptons</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">Target: Dec 31, 2026</div>
+          </div>
+          <div class="goal-icon-wrap" style="background:#E8F5E9;">
+            <!-- House SVG -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+              <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+              <path d="M9 21V12h6v9"/>
+            </svg>
+          </div>
+        </div>
+        <div class="goal-amounts"><span>$1,850,000 saved</span><span>Goal: $3,500,000</span></div>
+        <div class="goal-bar"><div class="goal-bar-fill" style="width:52.9%;background:#4CAF50;"></div></div>
+        <div class="goal-meta">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            52.9% complete
+          </span>
+          <span>$1,650,000 remaining</span>
+          <span>Auto-save: $50,000/mo</span>
+        </div>
+      </div>
+
+      <!-- Goal 2: Emergency Reserve -->
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <div class="goal-name">Emergency Reserve Fund</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">Target: Jun 30, 2026</div>
+          </div>
+          <div class="goal-icon-wrap" style="background:#E3F2FD;">
+            <!-- Shield SVG -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <polyline points="9 12 11 14 15 10"/>
+            </svg>
+          </div>
+        </div>
+        <div class="goal-amounts"><span>$480,000 saved</span><span>Goal: $500,000</span></div>
+        <div class="goal-bar"><div class="goal-bar-fill" style="width:96%;background:#1976D2;"></div></div>
+        <div class="goal-meta">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            96% complete
+          </span>
+          <span>$20,000 remaining</span>
+          <span>Auto-save: $10,000/mo</span>
+        </div>
+      </div>
+
+      <!-- Goal 3: Private Jet Charter -->
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <div class="goal-name">Private Jet Charter Fund</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">Target: Sep 1, 2026</div>
+          </div>
+          <div class="goal-icon-wrap" style="background:#F3E5F5;">
+            <!-- Plane SVG -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+              <path d="M22 2L11 13"/>
+              <path d="M22 2L15 22l-4-9-9-4 19-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="goal-amounts"><span>$120,000 saved</span><span>Goal: $250,000</span></div>
+        <div class="goal-bar"><div class="goal-bar-fill" style="width:48%;background:#9C27B0;"></div></div>
+        <div class="goal-meta">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            48% complete
+          </span>
+          <span>$130,000 remaining</span>
+          <span>Auto-save: $20,000/mo</span>
+        </div>
+      </div>
+
+      <!-- Goal 4: Charitable Foundation -->
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <div class="goal-name">Charitable Foundation</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">Target: Dec 31, 2027</div>
+          </div>
+          <div class="goal-icon-wrap" style="background:#E8F5E9;">
+            <!-- Leaf/Sprout SVG -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+              <path d="M2 22c1.25-1.25 2.5-2.5 3.75-3.75"/>
+              <path d="M22 2S11 2 6 7c-2.5 2.5-4 6-4 9 3 0 6.5-1.5 9-4l1 4 4-4c-3 2.5-4 6-4 9 3 0 6.5-1.5 9-4 5-5 5-16 5-16z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="goal-amounts"><span>$2,100,000 saved</span><span>Goal: $10,000,000</span></div>
+        <div class="goal-bar"><div class="goal-bar-fill" style="width:21%;background:#43A047;"></div></div>
+        <div class="goal-meta">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            21% complete
+          </span>
+          <span>$7,900,000 remaining</span>
+          <span>Auto-save: $100,000/mo</span>
+        </div>
+      </div>
+
+    </div><!-- /goals-grid -->
+
+    <!-- Summary card -->
+    <div style="margin-top:28px;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:24px;">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:16px;">Savings Summary</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;">
+        <div style="text-align:center;">
+          <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--text);">$4,550,000</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Total Saved</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--text);">$180,000</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Monthly Auto-Save</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--green);">4</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Active Goals</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--gold2);">54.6%</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Avg. Progress</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-content" style="position:relative;">
+    <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+    <div class="dash-title" style="margin-bottom:24px;">Edit Profile</div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="profileAvatarPreview" style="width:120px;height:120px;background:var(--gold);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:var(--text);cursor:pointer;overflow:hidden;" onclick="document.getElementById('profilePicInput').click();">JC</div>
+      <input type="file" id="profilePicInput" style="display:none;" accept="image/*" onchange="handleProfilePicUpload(event)">
+      <div style="font-size:12px;color:var(--muted);">Click avatar to upload photo</div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Email</div>
+      <input type="email" class="form-input" id="profileEmail" value="JamesChris98@yahoo.com">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Phone</div>
+      <input type="tel" class="form-input" id="profilePhone" value="+1 (555) 123-4567">
+    </div>
+    <button class="btn-submit" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="sidebar.js"></script>
+<script>
+window.ACTIVE_PAGE = 'savings';
+document.addEventListener('DOMContentLoaded', () => { initSidebar('savings'); });
+</script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verdant — Transaction History</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="auth.js"></script>
+<style>
+body { padding-top:64px; }
+.transactions-main { flex:1; padding:48px 56px; margin-left:280px; }
+@media(max-width:900px){ .transactions-main{ margin-left:0; padding:24px 20px; } }
+@media(max-width:600px){ .transactions-main{ padding:16px; } }
+
+.txn-search { width:100%; max-width:320px; padding:10px 16px; border:1px solid var(--border); border-radius:4px; font-family:'DM Sans',sans-serif; font-size:13px; background:var(--cream); color:var(--text); }
+.txn-search:focus { outline:none; border-color:var(--gold); }
+
+/* Status badges */
+.badge-completed  { background:#2E7D32; color:#fff; }
+.badge-pending    { background:#F57C00; color:#fff; }
+.badge-review     { background:#7B1FA2; color:#fff; }
+.badge-failed     { background:#C62828; color:#fff; }
+.status-badge     { padding:3px 9px; border-radius:2px; font-size:11px; font-weight:700; letter-spacing:.04em; display:inline-block; }
+
+/* Pending section banner */
+.pending-section-banner {
+  background:#FFF8F0; border:1px solid #FFD180; border-radius:6px;
+  padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;
+}
+.pending-section-banner svg { flex-shrink:0; }
+.pending-section-banner-text { font-size:13px; color:#E65100; line-height:1.5; }
+
+/* Responsive table */
+@media(max-width:600px){
+  .txn-table-header { display:none; }
+  .txn-table-row { grid-template-columns:36px 1fr !important; gap:8px !important; }
+  .txn-table-row > div:nth-child(3),
+  .txn-table-row > div:nth-child(5) { display:none; }
+  .txn-table-row > div:nth-child(4) { font-size:13px; }
+}
+</style>
+</head>
+<body>
+
+<div id="pageLoadOverlay">
+  <div class="page-loader">
+    <div class="page-loader-logo">Ver<em>dant</em></div>
+    <div class="page-loader-bar"><div class="page-loader-fill"></div></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+  <a class="topbar-logo" href="index.html">Ver<em>dant</em></a>
+  <nav class="topbar-nav" id="topNav" style="display:none;"></nav>
+  <div class="topbar-right">
+    <span style="font-size:12px;color:rgba(247,244,238,.5);font-family:'DM Mono',monospace;letter-spacing:.06em;">James Christopher</span>
+    <button class="btn-ghost" onclick="signOut()">Sign Out</button>
+  </div>
+</div>
+
+<div class="dashboard-layout">
+  <div class="sidebar" id="mainSidebar"></div>
+
+  <div class="transactions-main">
+    <div class="dash-greeting">
+      <div class="dash-title">Transaction History</div>
+      <div class="dash-sub">Complete history from 2017 to present. Click any transaction for details.</div>
+    </div>
+
+    <!-- Pending transfers banner (shown only when there are pending) -->
+    <div class="pending-section-banner" id="pendingBanner" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div class="pending-section-banner-text">
+        You have <strong id="pendingCount">0</strong> pending transfer(s) being processed.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+      <input type="text" class="txn-search" id="txnSearch" placeholder="Search transactions..." oninput="filterTransactions()">
+    </div>
+
+    <div class="txn-filters" id="txnFilters">
+      <div class="txn-filter active" onclick="setFilter('all',this)">All</div>
+      <div class="txn-filter" onclick="setFilter('pending',this)" id="filterPending">Pending</div>
+      <div class="txn-filter" onclick="setFilter('debit',this)">Expenses</div>
+      <div class="txn-filter" onclick="setFilter('credit',this)">Income</div>
+      <div class="txn-filter" onclick="setFilter('2026',this)">2026</div>
+      <div class="txn-filter" onclick="setFilter('2025',this)">2025</div>
+      <div class="txn-filter" onclick="setFilter('2024',this)">2024</div>
+      <div class="txn-filter" onclick="setFilter('2023',this)">2023</div>
+      <div class="txn-filter" onclick="setFilter('2022',this)">2022</div>
+      <div class="txn-filter" onclick="setFilter('pace',this)">Pace Co.</div>
+    </div>
+
+    <div class="txn-table">
+      <div class="txn-table-header">
+        <div></div>
+        <div>Description</div>
+        <div>Date</div>
+        <div>Amount</div>
+        <div>Status</div>
+      </div>
+      <div id="txnTableBody"></div>
+    </div>
+
+    <div id="txnPagination" style="display:flex;justify-content:center;gap:8px;margin-top:24px;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<!-- TRANSACTION MODAL -->
+<div class="modal-overlay" id="transactionModal">
+  <div class="modal-content" style="position:relative;">
+    <button class="modal-close" onclick="closeModal('transactionModal')">✕</button>
+    <div class="dash-title" style="margin-bottom:24px;">Transaction Details</div>
+    <div id="transactionDetails"></div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-content" style="position:relative;">
+    <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+    <div class="dash-title" style="margin-bottom:24px;">Edit Profile</div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="profileAvatarPreview" style="width:120px;height:120px;background:var(--gold);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:var(--text);cursor:pointer;overflow:hidden;" onclick="document.getElementById('profilePicInput').click();">JC</div>
+      <input type="file" id="profilePicInput" style="display:none;" accept="image/*" onchange="handleProfilePicUpload(event)">
+      <div style="font-size:12px;color:var(--muted);">Click avatar to upload photo</div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Email</div>
+      <input type="email" class="form-input" id="profileEmail" value="JamesChris98@yahoo.com">
+    </div>
+    <div class="form-group">
+      <div class="form-label">Phone</div>
+      <input type="tel" class="form-input" id="profilePhone" value="+1 (555) 123-4567">
+    </div>
+    <button class="btn-submit" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="sidebar.js"></script>
+<script>
+window.ACTIVE_PAGE = 'transactions';
+let currentFilter = 'all';
+let currentPage = 1;
+const PAGE_SIZE = 25;
+
+// ── Load and update pending transfers from localStorage ──
+function getPendingTransfers() {
+  const raw = JSON.parse(localStorage.getItem('verdant_pending_transfers') || '[]');
+  const now = new Date();
+  // Update statuses: if past review date, mark as Under Review
+  const updated = raw.map(tx => {
+    const reviewDate = new Date(tx.reviewDate);
+    if (tx.status === 'Pending' && now >= reviewDate) {
+      return { ...tx, status: 'Under Review' };
+    }
+    return tx;
+  });
+  // Save updated statuses back
+  localStorage.setItem('verdant_pending_transfers', JSON.stringify(updated));
+  return updated;
+}
+
+// ── Merge pending transfers into the full transaction list ──
+function getMergedTransactions() {
+  const pending = getPendingTransfers();
+  // Convert pending to same shape as allTransactionsData
+  const pendingFormatted = pending.map(tx => ({
+    id: tx.id,
+    icon: 'trending-up',
+    name: tx.name,
+    date: tx.date,
+    dateObj: new Date(tx.dateObj),
+    amount: tx.amount,
+    cat: 'Transfer',
+    type: 'debit',
+    merchant: tx.merchant,
+    ref: tx.ref,
+    status: tx.status,
+    details: tx.details,
+    fromAccount: tx.fromAccount,
+    isPending: true
+  }));
+  // Merge: pending first, then historical
+  return [...pendingFormatted, ...allTransactionsData];
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSidebar('transactions');
+  updatePendingBanner();
+  renderTransactions();
+});
+
+function updatePendingBanner() {
+  const pending = getPendingTransfers().filter(t => t.status === 'Pending' || t.status === 'Under Review');
+  const banner = document.getElementById('pendingBanner');
+  const countEl = document.getElementById('pendingCount');
+  if (pending.length > 0) {
+    banner.style.display = 'flex';
+    countEl.textContent = pending.length;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  currentPage = 1;
+  document.querySelectorAll('.txn-filter').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTransactions();
+}
+
+function filterTransactions() {
+  currentPage = 1;
+  renderTransactions();
+}
+
+function getFilteredData() {
+  const search = (document.getElementById('txnSearch')?.value || '').toLowerCase();
+  const all = getMergedTransactions();
+  return all.filter(t => {
+    let matchFilter;
+    if (currentFilter === 'all') {
+      matchFilter = true;
+    } else if (currentFilter === 'pending') {
+      matchFilter = (t.status === 'Pending' || t.status === 'Under Review');
+    } else if (currentFilter === 'debit') {
+      matchFilter = t.type === 'debit';
+    } else if (currentFilter === 'credit') {
+      matchFilter = t.type === 'credit';
+    } else if (currentFilter === 'pace') {
+      matchFilter = t.merchant === 'Pace Company';
+    } else {
+      matchFilter = t.dateObj.getFullYear() === parseInt(currentFilter);
+    }
+    const matchSearch = !search
+      || t.name.toLowerCase().includes(search)
+      || t.cat.toLowerCase().includes(search)
+      || t.date.toLowerCase().includes(search)
+      || t.amount.includes(search);
+    return matchFilter && matchSearch;
+  });
+}
+
+function getStatusBadge(status) {
+  if (status === 'Completed')   return '<span class="status-badge badge-completed">Completed</span>';
+  if (status === 'Pending')     return '<span class="status-badge badge-pending">Pending</span>';
+  if (status === 'Under Review') return '<span class="status-badge badge-review">Under Review</span>';
+  if (status === 'Failed')      return '<span class="status-badge badge-failed">Failed</span>';
+  return `<span class="status-badge badge-completed">${status}</span>`;
+}
+
+function renderTransactions() {
+  const tbody = document.getElementById('txnTableBody');
+  if (!tbody) return;
+  const data = getFilteredData();
+  const total = data.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = data.slice(start, start + PAGE_SIZE);
+
+  if (pageData.length === 0) {
+    tbody.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);">No transactions found.</div>';
+  } else {
+    tbody.innerHTML = pageData.map(t => {
+      const isPending = t.status === 'Pending' || t.status === 'Under Review';
+      const rowStyle = isPending ? 'background:rgba(255,243,224,.4);' : '';
+      const deleteBtn = isPending
+        ? `<button onclick="event.stopPropagation();deletePendingTransfer('${t.id}')" title="Cancel transfer" style="background:none;border:1px solid #C62828;color:#C62828;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:.04em;white-space:nowrap;">CANCEL</button>`
+        : '';
+      return `
+        <div class="txn-table-row" style="${rowStyle}" onclick="showTransactionDetails('${t.id}')">
+          <div style="display:flex;align-items:center;">
+            <div class="txn-icon" style="background:${getIconColor(t.cat)};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${getIconSVG(t.icon)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;">
+            <span style="font-weight:500;">${t.name}</span>
+            <span style="font-size:12px;color:var(--muted);">${t.cat}${t.fromAccount ? ' · ' + t.fromAccount : ''}</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);">${t.date}</div>
+          <div style="font-family:'DM Mono',monospace;font-weight:600;color:${t.type==='debit'?'var(--text)':'var(--green)'};"}>${t.amount}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${getStatusBadge(t.status)}${deleteBtn}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Pagination
+  const pag = document.getElementById('txnPagination');
+  if (pag) {
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    let html = '';
+    const maxVisible = 7;
+    for (let i = 1; i <= totalPages; i++) {
+      if (totalPages > maxVisible) {
+        if (i > 3 && i < totalPages - 2 && Math.abs(i - currentPage) > 1) {
+          if (i === 4 || i === totalPages - 3) html += `<span style="padding:8px 4px;color:var(--muted);">…</span>`;
+          continue;
+        }
+      }
+      html += `<button onclick="goToPage(${i})" style="padding:8px 14px;border:1px solid ${i===currentPage?'var(--gold)':'var(--border)'};background:${i===currentPage?'var(--gold2)':'var(--ivory)'};color:${i===currentPage?'var(--slate)':'var(--text)'};border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;">${i}</button>`;
+    }
+    pag.innerHTML = html;
+  }
+}
+
+function goToPage(p) {
+  currentPage = p;
+  renderTransactions();
+  window.scrollTo(0,0);
+}
+
+// ── Show transaction detail modal ──
+// Override the shared.js showTransactionDetails to handle pending tx IDs (strings)
+function showTransactionDetails(id) {
+  // First check pending transfers
+  const pending = getPendingTransfers();
+  const pendingTx = pending.find(t => t.id === id || t.id === String(id));
+
+  if (pendingTx) {
+    const reviewDate = new Date(pendingTx.reviewDate);
+    const reviewDateStr = reviewDate.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+    document.getElementById('transactionDetails').innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div style="width:48px;height:48px;background:#FFF3E0;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:16px;">${pendingTx.name}</div>
+          <div style="font-size:12px;color:var(--muted);">Transfer · ${pendingTx.date}</div>
+        </div>
+      </div>
+      <div style="background:var(--ivory);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>Amount</span><span style="font-family:'DM Mono',monospace;font-weight:700;">${pendingTx.amount}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>From Account</span><span style="font-size:12px;color:var(--muted);">${pendingTx.fromAccount || '—'}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>Reference</span><span style="font-family:'DM Mono',monospace;font-size:12px;">${pendingTx.ref}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Status</span><span>${getStatusBadge(pendingTx.status)}</span></div>
+      </div>
+      ${pendingTx.details ? `<div style="margin-top:12px;font-size:13px;color:var(--muted);">Memo: ${pendingTx.details}</div>` : ''}
+    `;
+    openModal('transactionModal');
+    return;
+  }
+
+  // Fall back to historical transaction
+  const t = allTransactionsData.find(x => x.id === id || x.id === parseInt(id));
+  if (!t) return;
+  document.getElementById('transactionDetails').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div style="width:48px;height:48px;background:${getIconColor(t.cat)};border-radius:50%;display:flex;align-items:center;justify-content:center;">${getIconSVG(t.icon)}</div>
+      <div>
+        <div style="font-weight:600;font-size:16px;">${t.name}</div>
+        <div style="font-size:12px;color:var(--muted);">${t.cat} · ${t.date}</div>
+      </div>
+    </div>
+    <div style="background:var(--ivory);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>Amount</span><span style="font-family:'DM Mono',monospace;font-weight:700;color:${t.type==='debit'?'var(--text)':'var(--green)'};">${t.amount}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>Category</span><span>${t.cat}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;"><span>Reference</span><span style="font-family:'DM Mono',monospace;font-size:12px;">${t.ref}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Status</span><span>${getStatusBadge(t.status)}</span></div>
+    </div>
+    ${t.details ? `<div style="font-size:13px;color:var(--muted);line-height:1.6;">${t.details}</div>` : ''}
+  `;
+  openModal('transactionModal');
+}
+
+// ── Delete a pending transfer and restore balance ──
+function deletePendingTransfer(id) {
+  if (!confirm('Cancel this pending transfer? The amount will be restored to your account balance.')) return;
+
+  const pending = JSON.parse(localStorage.getItem('verdant_pending_transfers') || '[]');
+  const tx = pending.find(t => t.id === id);
+
+  if (tx) {
+    // Restore balance
+    const balances = JSON.parse(localStorage.getItem('verdant_balances') || '{}');
+    const accountMap = {
+      'Primary Checking (•••• 3847)': 'checking',
+      'High-Yield Savings (•••• 2847)': 'savings',
+      'Investment Account (•••• 5920)': 'investment'
+    };
+    const accountKey = accountMap[tx.fromAccount];
+    if (accountKey && balances[accountKey] !== undefined) {
+      // Parse the amount (remove $ and commas)
+      const amt = parseFloat(tx.amount.replace(/[^0-9.]/g, ''));
+      balances[accountKey] = (balances[accountKey] || 0) + amt;
+      localStorage.setItem('verdant_balances', JSON.stringify(balances));
+    }
+
+    // Remove from pending list
+    const updated = pending.filter(t => t.id !== id);
+    localStorage.setItem('verdant_pending_transfers', JSON.stringify(updated));
+  }
+
+  updatePendingBanner();
+  renderTransactions();
+}
+</script>
+</body>
+</html>
