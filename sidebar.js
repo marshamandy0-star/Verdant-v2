@@ -23,7 +23,7 @@ function getSidebarHTML(activePage) {
 
   return `
     <div class="sidebar-user" style="cursor:pointer;" onclick="openProfileModal()">
-      <div class="sidebar-avatar" id="profileAvatar" style="position:relative;overflow:hidden;">JC</div>
+      <div class="sidebar-avatar" id="profileAvatar" style="position:relative;overflow:hidden;">LC</div>
       <div class="sidebar-name" id="sidebarName">James Christopher</div>
       <div class="sidebar-tag">Private Client</div>
       <div style="font-size:11px;margin-top:8px;opacity:0.6;">Click to edit profile</div>

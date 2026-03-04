@@ -299,7 +299,7 @@ function renderTopbar(activePage) {
   const isAuth = authPages.includes(activePage);
   if (isAuth) {
     if (topbarRight) topbarRight.innerHTML = `
-      <span style="font-size:12px;color:rgba(247,244,238,.5);font-family:'DM Mono',monospace;letter-spacing:.06em;">James Christopher</span>
+      <span style="font-size:12px;color:rgba(247,244,238,.5);font-family:'DM Mono',monospace;letter-spacing:.06em;">Leo Christopher</span>
       <button class="btn-ghost" onclick="signOut()">Sign Out</button>
     `;
     if (topNav) topNav.style.display = 'none';
